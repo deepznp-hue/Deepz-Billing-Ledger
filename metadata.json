@@ -1,0 +1,6 @@
+{
+  "name": "M.P. Textiles – Billing & Ledger App",
+  "description": "GST billing, tax invoice management, customer ledger, product HSN analytics, and receipts & payments system for M.P. Textiles, Komarapalayam.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
