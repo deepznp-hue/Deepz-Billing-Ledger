@@ -1,4 +1,5 @@
 import express from 'express';
+import http from 'http';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -39,7 +40,8 @@ function parseWithNodeFallback(buffer: Buffer, filename: string) {
 
 async function startServer() {
   const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
+  const PRIMARY_PORT = 3000;
+  const ENV_PORT = Number(process.env.PORT);
 
   app.get('/healthz', (_req, res) => {
     res.status(200).json({ status: 'ok' });
@@ -150,9 +152,26 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://0.0.0.0:${PORT}`);
+  // Always listen on port 3000 for AI Studio preview/proxy
+  const primaryServer = http.createServer(app);
+  primaryServer.on('error', (err: NodeJS.ErrnoException) => {
+    console.error(`Primary server error on port ${PRIMARY_PORT}:`, err.message);
   });
+  primaryServer.listen(PRIMARY_PORT, '0.0.0.0', () => {
+    console.log(`Server running on http://0.0.0.0:${PRIMARY_PORT}`);
+  });
+
+  // In standalone Cloud Run deployments where PORT (e.g. 8080) is not already bound by a proxy,
+  // also listen on process.env.PORT so Cloud Run startup probes succeed.
+  if (ENV_PORT && ENV_PORT !== PRIMARY_PORT) {
+    const envServer = http.createServer(app);
+    envServer.on('error', () => {
+      // Ignore EADDRINUSE when AI Studio's supervisor is already listening on ENV_PORT
+    });
+    envServer.listen(ENV_PORT, '0.0.0.0', () => {
+      console.log(`Server also listening on http://0.0.0.0:${ENV_PORT}`);
+    });
+  }
 }
 
 startServer();
